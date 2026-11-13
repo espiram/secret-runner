@@ -1,3 +1,20 @@
+# Secret Runner v0.3 — Actualización de diseño y organizador
+
+Esta versión incorpora paleta azul `#2D4569` y rojo `#E14549`, eslogan «Corre en equipo. Regala en secreto.», nombre configurable del organizador, opción para participar o solo organizar y wishlist sin precios.
+
+## Instalación en proyecto EXISTENTE
+
+1. **Supabase SQL Editor:** ejecuta `supabase/migrations/002_organizer_participation.sql` **solo si todavía no lo ejecutaste**. Esta migración agrega `participants.participates` y reemplaza `publish_draw`. Si la ejecutaste antes, no necesitas repetirla. **No ejecutes `001_init.sql` nuevamente.**
+2. **Edge Functions > api:** reemplaza `index.ts` por `supabase/functions/api/index.ts` y despliega. Conserva los Secrets actuales y `Verify JWT` desactivado, de acuerdo con la autenticación por tokens implementada.
+3. **GitHub Desktop:** copia el contenido del directorio `secret-runner/` sobre tu clon local del repositorio (sin borrar `.git`), realiza un commit y pulsa `Push origin`. GitHub Actions publicará la nueva interfaz.
+4. Recarga GitHub Pages. En el panel de organizador utiliza **Tu nombre visible > Guardar nombre** para cambiar el registro existente «Organizador». Cambia **¿También participas?** según corresponda.
+
+Los participantes y deseos existentes se conservan. Los precios previos dejan de mostrarse; el campo SQL `wishes.price` permanece por compatibilidad. Los nuevos deseos se guardan sin precio.
+
+**Importante:** el bootstrap con nombre personalizado solo aplica a bases de datos nuevas. Para tu intercambio ya creado, cambia tu nombre desde el panel, sin volver a ejecutar bootstrap. El sorteo es irreversible en el MVP.
+
+---
+
 # Secret Runner
 
 Intercambio secreto para runners, en español y sin cuentas tradicionales. Frontend en **React + Vite**, alojado en **GitHub Pages**; backend privado en **Supabase Edge Functions**.
@@ -107,3 +124,7 @@ npm run preview
 - `supabase/functions/api/index.ts`: API privada y emparejamiento aleatorio.
 - `supabase/migrations/001_init.sql`: esquema y función SQL de publicación atómica.
 - `.github/workflows/deploy.yml`: despliegue automático.
+
+
+## Organizer participation (migration 002)
+For an existing database, run `supabase/migrations/002_organizer_participation.sql` once in Supabase SQL Editor. Then redeploy `supabase/functions/api/index.ts` in Edge Functions and push updated frontend to GitHub Pages. The organizer can toggle **Sí, participo / Solo organizo** from their dashboard before the draw. Nonparticipating organizers remain administrators but are excluded from the draw and participant count.

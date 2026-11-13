@@ -32,11 +32,13 @@ Deno.serve(async(req)=>{
      required(!!BOOTSTRAP_KEY&&clean(data.setup_key,200)===BOOTSTRAP_KEY,'Clave de instalación inválida')
      const {count,error:countError}=await db.from('exchanges').select('*',{count:'exact',head:true});failDb({error:countError})
      required(count===0,'Ya existe un intercambio; la instalación inicial está cerrada')
+     const organizerName=clean(data.organizer_name,75),participates=data.participates!==false
+     required(organizerName.length>0,'Escribe el nombre del organizador')
      const title=clean(data.title,120),budget=Number(data.budget),event_date=clean(data.event_date,10),join_deadline=clean(data.join_deadline,10)
      required(!!title&&Number.isFinite(budget)&&budget>=0,'Datos del intercambio incorrectos')
      const code=randomToken(),session=randomToken()
      const {data:ex,error:exError}=await db.from('exchanges').insert({title,budget,event_date,join_deadline,invite_code:code}).select('id').single();failDb({error:exError})
-     const r=await db.from('participants').insert({exchange_id:ex.id,name:'Organizador',is_admin:true,token_hash:await hash(session)});failDb(r)
+     const r=await db.from('participants').insert({exchange_id:ex.id,name:organizerName,is_admin:true,participates,token_hash:await hash(session)});failDb(r)
      return json({token:session},200,corsOrigin)
    }
    if(action==='join'){
@@ -54,26 +56,42 @@ Deno.serve(async(req)=>{
    const exId=me.exchange_id
    const {data:ex,error:exError}=await db.from('exchanges').select('id,title,budget,event_date,join_deadline,invite_code,drawn').eq('id',exId).single();failDb({error:exError})
    if(action==='dashboard'){
-     const {data:people,error:pError}=await db.from('participants').select('id,name,is_admin,created_at').eq('exchange_id',exId).order('created_at');failDb({error:pError})
+     const {data:people,error:pError}=await db.from('participants').select('id,name,is_admin,participates,created_at').eq('exchange_id',exId).order('created_at');failDb({error:pError})
      const ids=people.map(p=>p.id)
      const {data:allWishes,error:wError}=await db.from('wishes').select('*').in('participant_id',ids);failDb({error:wError})
      const myWishes=allWishes.filter(w=>w.participant_id===me.id)
      let assignment=null
-     if(ex.drawn){
+     if(ex.drawn&&me.participates){
        const {data:a,error:aError}=await db.from('assignments').select('receiver').eq('giver',me.id).single();failDb({error:aError})
        const target=people.find(p=>p.id===a.receiver)
        assignment={name:target?.name,wishes:allWishes.filter(w=>w.participant_id===a.receiver)}
      }
-     const participants=people.map((p,i)=>({id:p.id,name:p.name,is_admin:p.is_admin,number:i+1,wish_count:allWishes.filter(w=>w.participant_id===p.id).length}))
+     const participants=people.map((p,i)=>({id:p.id,name:p.name,is_admin:p.is_admin,participates:p.participates,number:i+1,wish_count:allWishes.filter(w=>w.participant_id===p.id).length}))
      const outEx=me.is_admin?ex:{...ex,invite_code:undefined}
      let exclusions=[]
      if(me.is_admin){const {data,error}=await db.from('exclusions').select('*').eq('exchange_id',exId);failDb({error});exclusions=data}
-     return json({me:{id:me.id,name:me.name,is_admin:me.is_admin,number:participants.find(p=>p.id===me.id)?.number},exchange:outEx,participants,wishes:myWishes,assignment,exclusions},200,corsOrigin)
+     return json({me:{id:me.id,name:me.name,is_admin:me.is_admin,participates:me.participates,number:participants.find(p=>p.id===me.id)?.number},exchange:outEx,participants,wishes:myWishes,assignment,exclusions},200,corsOrigin)
+   }
+   if(action==='update_organizer_name'){
+     required(me.is_admin,'Solo el organizador puede cambiar su nombre')
+     const name=clean(data.name,75)
+     required(name.length>0,'Escribe un nombre válido')
+     const {error}=await db.from('participants').update({name}).eq('id',me.id).eq('exchange_id',exId)
+     if(error){if(error.code==='23505')throw new Error('Ya hay un corredor con ese nombre');throw error}
+     return json({ok:true},200,corsOrigin)
+   }
+   if(action==='set_organizer_participation'){
+     required(me.is_admin,'Solo el organizador puede modificar esta opción')
+     required(!ex.drawn,'No puedes cambiar tu participación después del sorteo')
+     required(typeof data.participates==='boolean','Selección inválida')
+     failDb(await db.from('participants').update({participates:data.participates}).eq('id',me.id).eq('exchange_id',exId))
+     return json({ok:true},200,corsOrigin)
    }
    if(action==='add_wish'){
-     const name=clean(data.name,120),url=clean(data.url,2000),notes=clean(data.notes,300),price=Number(data.price||0)
-     required(!!name&&validUrl(url)&&price>=0&&Number.isFinite(price)&&price<=10000000,'Revisa el nombre, enlace y precio')
-     const r=await db.from('wishes').insert({participant_id:me.id,name,url:url||null,price,notes});failDb(r)
+     required(me.participates,'Activa tu participación para crear una wishlist')
+     const name=clean(data.name,120),url=clean(data.url,2000),notes=clean(data.notes,300)
+     required(!!name&&validUrl(url),'Revisa el nombre y enlace')
+     const r=await db.from('wishes').insert({participant_id:me.id,name,url:url||null,notes});failDb(r)
      return json({ok:true},200,corsOrigin)
    }
    if(action==='delete_wish'){
@@ -94,7 +112,7 @@ Deno.serve(async(req)=>{
      return json({ok:true},200,corsOrigin)
    }
    if(action==='draw'){
-     const {data:people,error:pError}=await db.from('participants').select('id').eq('exchange_id',exId);failDb({error:pError})
+     const {data:people,error:pError}=await db.from('participants').select('id').eq('exchange_id',exId).eq('participates',true);failDb({error:pError})
      required(people.length>=3&&people.length<=100,'Se requieren entre 3 y 100 participantes')
      const {data:excluded,error:eError}=await db.from('exclusions').select('a,b').eq('exchange_id',exId);failDb({error:eError})
      const blocked=new Set<string>();for(const e of excluded){blocked.add(`${e.a}|${e.b}`);blocked.add(`${e.b}|${e.a}`)}
