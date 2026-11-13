@@ -1,4 +1,4 @@
-# A Mí Me Tocó... — v0.5
+# A Mí Me Tocó... — v0.6
 
 **Tú pon los regalos, nosotros el secreto.**
 
@@ -31,3 +31,15 @@ React + Vite + GitHub Pages; Supabase PostgreSQL + Edge Functions. Variables de 
 ## Limitaciones
 
 La versión actual trabaja con un intercambio por proyecto Supabase. El sorteo definitivo no se puede revertir desde la interfaz; los tokens de los participantes viven en el almacenamiento local del navegador. No hay recuperación automatizada de acceso.
+
+## v0.6 — Nombre del intercambio visible en las invitaciones
+
+Al abrir el enlace de invitación, antes de registrarse se muestra el nombre del intercambio, su fecha de entrega y presupuesto. Al entrar, aparece también en el saludo. Esta vista obtiene los datos mediante la acción `invite_preview` de la Edge Function, que **no** comparte listas de participantes, códigos ni asignaciones.
+
+### Actualizar una instalación v0.5
+
+1. **Supabase Edge Functions → api → Code:** reemplaza `index.ts` con `supabase/functions/api/index.ts` de este ZIP y despliega. Mantén los Secrets y JWT desactivado como ya estaban.
+2. **GitHub Desktop:** copia la carpeta del ZIP sobre tu repo (conservando `.git`), commit `feat: show exchange name on invitation` y Push origin.
+3. Comprueba que GitHub Actions desplegó. Abre un enlace de invitación en incógnito: el nombre aparecerá antes de inscribirse.
+
+**Sin SQL nuevo**. Ningún dato existente se modifica. El backend debe actualizarse antes del frontend para que la vista previa funcione.

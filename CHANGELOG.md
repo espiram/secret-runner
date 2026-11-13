@@ -1,3 +1,8 @@
+## v0.6
+- Vista previa con nombre y detalles de intercambio antes de registrarse.
+- Nombre de intercambio visible tras el registro.
+- Acción de lectura restringida `invite_preview`; sin nueva migración SQL.
+
 # Changelog
 
 ## v0.5 — A Mí Me Tocó...

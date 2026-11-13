@@ -41,6 +41,14 @@ Deno.serve(async(req)=>{
      const r=await db.from('participants').insert({exchange_id:ex.id,name:organizerName,is_admin:true,participates,token_hash:await hash(session)});failDb(r)
      return json({token:session},200,corsOrigin)
    }
+   if(action==='invite_preview'){
+     const code=clean(data.code,128)
+     if(!/^[0-9a-f]{64}$/i.test(code))return json({exchange:null},200,corsOrigin)
+     const {data:exchange,error}=await db.from('exchanges').select('title,budget,event_date,join_deadline,drawn').eq('invite_code',code).maybeSingle()
+     failDb({error})
+     // No participant identities, invitation code or assignments are returned.
+     return json({exchange:exchange?{title:exchange.title,budget:exchange.budget,event_date:exchange.event_date}:null},200,corsOrigin)
+   }
    if(action==='join'){
      const code=clean(data.code,128), name=clean(data.name,75)
      required(code.length>=32&&name.length>0,'Introduce un nombre y un código de invitación válidos')
