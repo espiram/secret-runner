@@ -111,6 +111,24 @@ Deno.serve(async(req)=>{
      }
      return json({ok:true},200,corsOrigin)
    }
+   if(action==='simulate_draw'){
+     // Read-only feasibility test. No assignments, no writes, no persistent results.
+     const {data:people,error:pError}=await db.from('participants').select('id').eq('exchange_id',exId).eq('participates',true);failDb({error:pError})
+     required(people.length>=3&&people.length<=100,'La simulación requiere entre 3 y 100 participantes')
+     const {data:excluded,error:eError}=await db.from('exclusions').select('a,b').eq('exchange_id',exId);failDb({error:eError})
+     const blocked=new Set<string>();for(const e of excluded){blocked.add(`${e.a}|${e.b}`);blocked.add(`${e.b}|${e.a}`)}
+     const pairs=match(shuffle(people.map(p=>p.id)),blocked)
+     return json({possible:pairs!==null,participant_count:people.length,exclusion_count:excluded.length,message:pairs?'Existe al menos una asignación válida. No se guardó ni publicó ningún resultado.':'No existe una asignación válida con estas exclusiones. No se modificaron los datos.'},200,corsOrigin)
+   }
+   if(action==='remove_participant'){
+     const participantId=clean(data.id,100)
+     required(/^[0-9a-f-]{36}$/i.test(participantId),'Identificador inválido')
+     const {data:target,error:targetError}=await db.from('participants').select('id,name,is_admin').eq('id',participantId).eq('exchange_id',exId).single();failDb({error:targetError})
+     required(!target.is_admin,'No se puede eliminar al organizador')
+     required(clean(data.confirm_name,75)===target.name,'Confirma el nombre exacto del participante')
+     const {error}=await db.rpc('remove_participant_before_draw',{p_exchange:exId,p_participant:participantId});failDb({error})
+     return json({ok:true},200,corsOrigin)
+   }
    if(action==='draw'){
      const {data:people,error:pError}=await db.from('participants').select('id').eq('exchange_id',exId).eq('participates',true);failDb({error:pError})
      required(people.length>=3&&people.length<=100,'Se requieren entre 3 y 100 participantes')
