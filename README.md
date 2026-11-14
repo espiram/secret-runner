@@ -1,4 +1,13 @@
-# A Mí Me Tocó... — v0.7 «El Muro»
+## Actualización v0.7.1: formulario de creación separado
+
+- Página pública: `https://espiram.github.io/secret-runner/` — muestra únicamente inscripción/invitación; no presenta configuración ni clave de instalación.
+- Ruta de creación: `https://espiram.github.io/secret-runner/#/admin` — muestra formulario de creación únicamente en esa ruta.
+- **Seguridad:** la ruta es accesible para cualquiera que conozca su URL. No es un sistema de autenticación; la protección efectiva sigue estando en la verificación de `ADMIN_SETUP_SECRET` en la Edge Function. No coloques ese secreto en el repositorio ni en variables `VITE_`.
+- **Limitación existente:** el backend de v0.7 todavía **rechaza** `bootstrap` si ya existe un intercambio (`count !== 0`). Esta actualización NO habilita crear más intercambios. La ruta privada permite utilizar el formulario de instalación, pero para crear un segundo intercambio se requerirá un cambio de backend posterior.
+- Instalación desde v0.7: reemplaza los archivos del proyecto con esta versión y despliega GitHub Pages. **Sin cambios de SQL ni Edge Function.** La v0.7 debe estar desplegada previamente.
+- Pruebas: (1) ventana incógnita en `/` no muestra formulario ni campo de clave; (2) `/#/admin` muestra formulario; (3) abrir una invitación `#/?invite=...` mantiene la inscripción; (4) el panel de organizador existente conserva su sesión y datos; (5) clave inválida no permite crear intercambio.
+
+# A Mí Me Tocó... — v0.7.1 «Ruta administrativa privada»
 
 Aplicación de intercambio de regalos con React/Vite, GitHub Pages y Supabase. Esta versión añade **Actividad, Deseos y Participantes** para miembros autenticados del intercambio; no revela a quién le tocó regalar a quién.
 

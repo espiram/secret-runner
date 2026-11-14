@@ -1,3 +1,9 @@
+## v0.7.1
+- Oculta formulario de instalación en el acceso público.
+- Ruta explícita `#/admin` para el formulario de instalación.
+- Conserva control del secreto y límite de un intercambio en backend.
+- Sin migraciones nuevas.
+
 ## v0.6
 - Vista previa con nombre y detalles de intercambio antes de registrarse.
 - Nombre de intercambio visible tras el registro.
