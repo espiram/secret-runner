@@ -53,3 +53,11 @@
 .delivery-pre{white-space:pre-wrap;overflow-wrap:anywhere}
 .delivery-error{color:#a72b30}.delivery-success{color:#226847}
 @media(max-width:600px){.delivery-banner{flex-wrap:wrap}.delivery-banner button{width:100%}}
+
+/* v0.9: admin exchange switcher */
+.admin-exchange-switcher{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin:1rem 0}
+.admin-exchange-switcher p{margin:.4rem 0 0}
+.admin-switch-actions{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.admin-switch-actions select{max-width:310px;min-width:180px}
+.admin-new-exchange{margin:1rem 0 1.5rem}
+@media(max-width:650px){.admin-switch-actions,.admin-switch-actions select,.admin-switch-actions button{width:100%;max-width:none}}

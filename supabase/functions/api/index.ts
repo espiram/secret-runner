@@ -74,15 +74,15 @@ Deno.serve(async(req)=>{
    const {action,data={},token=''}=await req.json()
    if(action==='bootstrap'){
      required(!!BOOTSTRAP_KEY&&clean(data.setup_key,200)===BOOTSTRAP_KEY,'Clave de instalación inválida')
-     const {count,error:countError}=await db.from('exchanges').select('*',{count:'exact',head:true});failDb({error:countError})
-     required(count===0,'Ya existe un intercambio; la instalación inicial está cerrada')
      const organizerName=clean(data.organizer_name,75),participates=data.participates!==false
      required(organizerName.length>0,'Escribe el nombre del organizador')
      const title=clean(data.title,120),budget=Number(data.budget),event_date=clean(data.event_date,10),join_deadline=clean(data.join_deadline,10)
-     required(!!title&&Number.isFinite(budget)&&budget>=0,'Datos del intercambio incorrectos')
+     required(!!title&&Number.isFinite(budget)&&budget>=0&&budget<=9999999999,'Datos del intercambio incorrectos')
+     required(/^\d{4}-\d{2}-\d{2}$/.test(event_date)&&/^\d{4}-\d{2}-\d{2}$/.test(join_deadline)&&join_deadline<=event_date,'Selecciona fechas válidas; la inscripción no puede cerrar después de la entrega')
      const code=randomToken(),session=randomToken()
      const {data:ex,error:exError}=await db.from('exchanges').insert({title,budget,event_date,join_deadline,wish_deadline:event_date||null,invite_code:code}).select('id').single();failDb({error:exError})
-     const r=await db.from('participants').insert({exchange_id:ex.id,name:organizerName,is_admin:true,participates,token_hash:await hash(session)});failDb(r)
+     const r=await db.from('participants').insert({exchange_id:ex.id,name:organizerName,is_admin:true,participates,token_hash:await hash(session)})
+     if(r.error){await db.from('exchanges').delete().eq('id',ex.id);failDb(r)}
      return json({token:session},200,corsOrigin)
    }
    if(action==='invite_preview'){

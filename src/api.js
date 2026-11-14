@@ -15,3 +15,17 @@ export async function api(action, data = {}, token = getToken()) {
   if (!response.ok || payload.error) throw new Error(payload.error || `Error HTTP ${response.status}`)
   return payload
 }
+
+// Admin sessions are stored only on this device, never in the invite link.
+const ADMIN_SESSIONS_KEY = 'a_mi_me_toco_admin_sessions_v09'
+export function listAdminSessions(){
+  try {const saved=JSON.parse(localStorage.getItem(ADMIN_SESSIONS_KEY)||'[]');return Array.isArray(saved)?saved.filter(x=>/^[0-9a-f]{64}$/.test(x.token)).slice(0,30):[]}catch{return []}
+}
+export function rememberAdminSession(exchange,token=getToken()){
+  if(!exchange?.id||!/^[0-9a-f]{64}$/.test(token))return listAdminSessions()
+  const items=listAdminSessions().filter(x=>x.exchangeId!==exchange.id && x.token!==token)
+  const updated=[{exchangeId:exchange.id,title:exchange.title||'Intercambio',token},...items].slice(0,30)
+  localStorage.setItem(ADMIN_SESSIONS_KEY,JSON.stringify(updated))
+  return updated
+}
+export function forgetAdminSessions(){localStorage.removeItem(ADMIN_SESSIONS_KEY)}
