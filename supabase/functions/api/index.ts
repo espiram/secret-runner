@@ -124,6 +124,46 @@ Deno.serve(async(req)=>{
      if(me.is_admin){const {data,error}=await db.from('exclusions').select('*').eq('exchange_id',exId);failDb({error});exclusions=data}
      return json({wish_edit_open:deadlineOpen(ex),me:{id:me.id,name:me.name,is_admin:me.is_admin,participates:me.participates,number:participants.find(p=>p.id===me.id)?.number},exchange:outEx,participants,wishes:myWishes,assignment,exclusions},200,corsOrigin)
    }
+   // Delivery addresses are deliberately excluded from dashboard, wall and organizer APIs.
+   if(action==='delivery_status'){
+     const {data:own,error:ownError}=await db.from('delivery_addresses').select('recipient_name,kind,address_text,notes,updated_at').eq('participant_id',me.id).eq('exchange_id',exId).maybeSingle();failDb({error:ownError})
+     const {data:incoming,error:incomingError}=await db.from('delivery_requests').select('requested_at,fulfilled_at').eq('recipient_id',me.id).eq('exchange_id',exId).maybeSingle();failDb({error:incomingError})
+     let target:{name:string,address:{recipient_name:string,kind:string,address_text:string,notes:string|null}|null}|null=null
+     if(ex.drawn&&me.participates){
+       const {data:a,error:aError}=await db.from('assignments').select('receiver').eq('exchange_id',exId).eq('giver',me.id).maybeSingle();failDb({error:aError})
+       if(a){
+         const {data:p,error:pError}=await db.from('participants').select('name').eq('id',a.receiver).eq('exchange_id',exId).single();failDb({error:pError})
+         const {data:address,error:addressError}=await db.from('delivery_addresses').select('recipient_name,kind,address_text,notes').eq('participant_id',a.receiver).eq('exchange_id',exId).maybeSingle();failDb({error:addressError})
+         target={name:p.name,address:address||null}
+       }
+     }
+     return json({own:own||null,needs_address:!!incoming&&!incoming.fulfilled_at&&!own,target},200,corsOrigin)
+   }
+   if(action==='save_delivery_address'){
+     required(me.participates,'Solo participantes del sorteo pueden registrar una dirección')
+     const recipient_name=clean(data.recipient_name,100),kind=clean(data.kind,24),address_text=clean(data.address_text,1000),notes=clean(data.notes,300)
+     required(!!recipient_name&&address_text.length>=10,'Escribe el nombre del destinatario y una dirección completa')
+     required(['Casa','Oficina','Familiar','Punto de entrega','Otro'].includes(kind),'Tipo de entrega inválido')
+     failDb(await db.from('delivery_addresses').upsert({participant_id:me.id,exchange_id:exId,recipient_name,kind,address_text,notes,updated_at:new Date().toISOString()},{onConflict:'participant_id'}))
+     // A request is fulfilled if the destination is present; giver identity is never disclosed.
+     failDb(await db.from('delivery_requests').update({fulfilled_at:new Date().toISOString()}).eq('recipient_id',me.id).eq('exchange_id',exId))
+     return json({ok:true},200,corsOrigin)
+   }
+   if(action==='delete_delivery_address'){
+     required(me.participates,'Solo participantes del sorteo pueden modificar una dirección')
+     failDb(await db.from('delivery_addresses').delete().eq('participant_id',me.id).eq('exchange_id',exId))
+     return json({ok:true},200,corsOrigin)
+   }
+   if(action==='request_delivery_address'){
+     required(ex.drawn&&me.participates,'Solo puedes solicitar una dirección después del sorteo')
+     const {data:assignment,error:aError}=await db.from('assignments').select('receiver').eq('exchange_id',exId).eq('giver',me.id).single();failDb({error:aError})
+     const {data:address,error:addressError}=await db.from('delivery_addresses').select('participant_id').eq('participant_id',assignment.receiver).eq('exchange_id',exId).maybeSingle();failDb({error:addressError})
+     required(!address,'Tu destinatario ya registró una dirección')
+     const {data:existing,error:eError}=await db.from('delivery_requests').select('fulfilled_at').eq('recipient_id',assignment.receiver).eq('exchange_id',exId).maybeSingle();failDb({error:eError})
+     required(!existing||!!existing.fulfilled_at,'Ya enviaste una solicitud. Espera a que tu amigo secreto registre su dirección.')
+     failDb(await db.from('delivery_requests').upsert({recipient_id:assignment.receiver,exchange_id:exId,requested_at:new Date().toISOString(),fulfilled_at:null},{onConflict:'recipient_id'}))
+     return json({ok:true},200,corsOrigin)
+   }
    if(action==='update_organizer_name'){
      required(me.is_admin,'Solo el organizador puede cambiar su nombre')
      const name=clean(data.name,75)

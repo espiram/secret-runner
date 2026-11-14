@@ -37,3 +37,19 @@
 /* v0.7.1: only the private hash route renders the installation form. */
 .setup-private-layout { width: min(100%, 680px); margin: 0 auto 2.5rem; }
 .setup-private-layout .dark-panel { width: 100%; }
+
+/* v0.8 · Private gift delivery */
+.delivery-panel h2,.delivery-recipient h3{display:flex;align-items:center;gap:9px}
+.delivery-form{display:grid;gap:14px;max-width:660px}
+.delivery-form textarea{width:100%;box-sizing:border-box;resize:vertical}
+.delivery-actions{display:flex;flex-wrap:wrap;gap:10px}
+.delivery-hint{display:flex;gap:8px;align-items:center;color:var(--muted,#69727d);line-height:1.5}
+.delivery-request-notice,.delivery-banner{display:flex;gap:14px;align-items:center;background:#fff4e9;border:1px solid #edcaa0;border-radius:12px;padding:15px;margin:15px 0}
+.delivery-request-notice small,.delivery-banner small{display:block;margin-top:5px}
+.delivery-banner>div{flex:1}
+.delivery-dot{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;background:#e14549;color:white;border-radius:100%;font-size:12px;padding:0 3px}
+.delivery-recipient{margin:22px 0 12px;padding:17px;border:1px solid #d7dde4;border-radius:12px;text-align:left}
+.delivery-address{display:grid;gap:6px;text-align:left;background:#f2f5f7;border-radius:10px;padding:15px;margin-bottom:12px}
+.delivery-pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.delivery-error{color:#a72b30}.delivery-success{color:#226847}
+@media(max-width:600px){.delivery-banner{flex-wrap:wrap}.delivery-banner button{width:100%}}

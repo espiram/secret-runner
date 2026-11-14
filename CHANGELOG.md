@@ -1,3 +1,9 @@
+## v0.8 — Direcciones privadas y solicitudes anónimas
+- Nueva sección «Mi dirección»; nombre de destinatario, tipo, dirección libre y referencias opcionales.
+- Visibilidad: propietario siempre y su dador asignado solo después del sorteo; sin privilegio adicional de organizador.
+- Solicitud anónima única cuando no hay dirección y aviso interno al destinatario.
+- Migración incremental 005, RLS y validación de intercambio; sin cambios en sorteos o deseos.
+
 ## v0.7.1
 - Oculta formulario de instalación en el acceso público.
 - Ruta explícita `#/admin` para el formulario de instalación.

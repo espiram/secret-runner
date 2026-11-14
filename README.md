@@ -1,3 +1,7 @@
+## Versión v0.8 — direcciones privadas y solicitudes anónimas
+
+**Empieza por [`INSTALL_V0.8.md`](INSTALL_V0.8.md).** Instala en orden: migración `005_private_delivery.sql`, Edge Function `api`, frontend de GitHub Pages. El resto de este README documenta la v0.7.1 y los pasos de migración anteriores.
+
 ## Actualización v0.7.1: formulario de creación separado
 
 - Página pública: `https://espiram.github.io/secret-runner/` — muestra únicamente inscripción/invitación; no presenta configuración ni clave de instalación.
