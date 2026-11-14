@@ -1,17 +1,19 @@
 import Wall from './Wall'
 import Delivery, {DeliveryRecipient} from './Delivery'
 import React, {useEffect,useState} from 'react'
-import {Gift, Users, CalendarDays, ShieldCheck, ArrowRight, Plus, Trash2, Link as LinkIcon, LockKeyhole, LogOut, Copy, PartyPopper, Target, Shuffle, Check, AlertCircle, Loader2, Settings, ExternalLink, Heart, MapPin, Bell} from 'lucide-react'
+import {Gift, Users, CalendarDays, ShieldCheck, ArrowRight, Plus, Trash2, Link as LinkIcon, LockKeyhole, LogOut, Copy, PartyPopper, Target, Shuffle, Check, AlertCircle, Loader2, Settings, ExternalLink, Heart, MapPin, Bell, KeyRound, Share2} from 'lucide-react'
 import {api, configured, getToken, setToken, clearToken, listAdminSessions, rememberAdminSession, forgetAdminSessions} from './api'
 
 const money = n => new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(n||0)
 const date = s => s ? new Date(`${s}T12:00:00`).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'}) : 'Por definir'
+const validAccessToken = value => /^[0-9a-f]{64}$/i.test(value||'')
 const isPrivateSetupRoute = () => window.location.hash.replace(/\?.*$/, '').replace(/\/$/, '') === '#/admin'
 const initial = {organizer_name:'',participates:true,title:'Intercambio 2026',budget:500,event_date:'2026-12-19',join_deadline:'2026-12-10'}
 function IconButton({children,...props}) {return <button className="icon-button" type="button" {...props}>{children}</button>}
 function App(){
  const [privateSetup,setPrivateSetup]=useState(isPrivateSetupRoute), [createAnother,setCreateAnother]=useState(false), [savedAdmins,setSavedAdmins]=useState(listAdminSessions), [me,setMe]=useState(null), [info,setInfo]=useState(null), [busy,setBusy]=useState(false), [error,setError]=useState(''), [toast,setToast]=useState(''), [page,setPage]=useState('home')
  const [joinCode,setJoinCode]=useState(''), [invitePreview,setInvitePreview]=useState(null),[previewState,setPreviewState]=useState('idle'), [joinName,setJoinName]=useState(''),[setupKey,setSetupKey]=useState(''), [form,setForm]=useState(initial),[adminName,setAdminName]=useState('')
+ const [accessLoading,setAccessLoading]=useState(false)
  const [deliveryAlert,setDeliveryAlert]=useState(false),[deliveryVersion,setDeliveryVersion]=useState(0)
  const [wishDeadline,setWishDeadline]=useState(''),[wallVersion,setWallVersion]=useState(0),[wishEditing,setWishEditing]=useState(null),[preview,setPreview]=useState(null),[previewBusy,setPreviewBusy]=useState(false)
  const [wish,setWish]=useState({name:'',url:'',notes:''}),[excludeA,setExcludeA]=useState(''),[excludeB,setExcludeB]=useState(''),[simulation,setSimulation]=useState(null)
@@ -24,8 +26,36 @@ function App(){
    return ()=>window.removeEventListener('hashchange',onHashChange)
  },[])
  useEffect(()=>{
-   const hash=new URLSearchParams(location.hash.replace(/^#\/?/,''));const code=hash.get('invite');if(code)setJoinCode(code)
-   if(getToken()) refresh().catch(()=>{clearToken();setMe(null)})
+   const params=new URLSearchParams(location.hash.replace(/^#\/?/,''))
+   const access=params.get('access')
+   const code=params.get('invite')
+   // Never leave the credential in the visible URL or subsequent navigation history.
+   // The fragment is not sent in HTTP requests, but anyone holding it has full session access.
+   if(access!==null){
+     history.replaceState(null,'',location.pathname+location.search)
+     if(!validAccessToken(access)){
+       setError('El enlace personal tiene un formato inválido. Solicita tu enlace correcto.')
+       if(getToken())refresh().catch(()=>{clearToken();setMe(null)})
+       return
+     }
+     const previous=getToken()
+     setAccessLoading(true)
+     // Validate before replacing a working session, avoiding accidental loss of access.
+     api('dashboard',{},access).then(()=>{
+       setToken(access)
+       return refresh()
+     }).then(()=>{
+       setPage('wishlist')
+       flash('Acceso personal recuperado. Ya puedes usar este dispositivo.')
+     }).catch(()=>{
+       setToken(previous)
+       setError('No se pudo recuperar este enlace personal. Verifica que esté completo y vigente.')
+       if(previous)refresh().catch(()=>{clearToken();setMe(null)})
+     }).finally(()=>setAccessLoading(false))
+     return
+   }
+   if(code)setJoinCode(code)
+   if(getToken())refresh().catch(()=>{clearToken();setMe(null)})
  },[])
  useEffect(()=>{
    if(me)return
@@ -57,6 +87,8 @@ function App(){
  const draw=()=>{if(!confirm('El sorteo será definitivo. ¿Quieres continuarlo?'))return;run(async()=>{await api('draw');await refresh();flash('¡Sorteo realizado!')})}
  const logout=()=>{clearToken();forgetAdminSessions();setSavedAdmins([]);setMe(null);setInfo(null);setDeliveryAlert(false);setCreateAnother(false);setPage('home')}
  const copy=async(text)=>{try{await navigator.clipboard.writeText(text);flash('Copiado')}catch{flash('Copia el texto desde tu navegador')}}
+ const personalUrl=me&&validAccessToken(getToken()) ? `${location.origin}${location.pathname}#/?access=${getToken()}` : ''
+ const sharePersonal=async()=>{if(!personalUrl)return;try{if(navigator.share)await navigator.share({title:'Mi acceso privado a A Mí Me Tocó...',text:'Enlace privado: no lo compartas con otras personas.',url:personalUrl});else await copy(personalUrl)}catch(e){if(e?.name!=='AbortError')fail(e)}}
  const inviteUrl=info?.exchange ? `${location.origin}${location.pathname}#/?invite=${info.exchange.invite_code}` : ''
  const items=info?.wishes||[]
  const setupFields=(<div className="setup-form"><label>Tu nombre como organizador<input value={form.organizer_name} maxLength={75} onChange={e=>setForm({...form,organizer_name:e.target.value})} placeholder="Ej. Charly"/></label><label className="setup-participation"><input type="checkbox" checked={form.participates} onChange={e=>setForm({...form,participates:e.target.checked})}/> También participo en el intercambio</label><label>Nombre del intercambio<input value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label><label>Presupuesto (MXN)<input type="number" min="0" value={form.budget} onChange={e=>setForm({...form,budget:e.target.value})}/></label><label>Fecha de entrega<input type="date" value={form.event_date} onChange={e=>setForm({...form,event_date:e.target.value})}/></label><label>Último día de inscripción<input type="date" value={form.join_deadline} onChange={e=>setForm({...form,join_deadline:e.target.value})}/></label><label>Clave de instalación (secret en Supabase)<input type="password" value={setupKey} onChange={e=>setSetupKey(e.target.value)}/></label><button className="primary" disabled={busy||!configured} onClick={bootstrap}>Crear intercambio <ArrowRight size={18}/></button><small>Esta clave se envía solo al backend; nunca se guarda en el navegador.</small><button className="outline" type="button" onClick={()=>{if(me){setCreateAnother(false)}else{location.hash='/'}setSetupKey('')}}>{me?'Cancelar':'Volver a la página principal'}</button></div>)
@@ -66,13 +98,15 @@ function App(){
  <section className="hero"><div className="eyebrow"><span className="small-line"/>UN GRUPO, MUCHOS REGALOS Y UN GRAN SECRETO</div><h1>A mí me tocó...<br/><em>¡Y no te voy a decir quién!</em></h1><p>Tú pon los regalos, nosotros el secreto. Organiza un intercambio con tus amigos, tu familia o tu equipo, comparte tu lista de deseos y descubre a quién te toca sorprender.</p></section>
  {toast&&<div className="toast"><Check size={17}/>{toast}</div>}{error&&<div className="error"><AlertCircle size={18}/><span>{error}</span><button onClick={()=>setError('')}>×</button></div>}
  {!configured&&<div className="notice"><Settings size={18}/><div><b>Proyecto listo para conectar.</b><div>Configura las variables de Supabase y despliega la función según el README. Mientras tanto, puedes explorar la interfaz.</div></div></div>}
- {!me?<>
+ {accessLoading&&<div className="notice" role="status"><Loader2 className="spin" size={18}/> Verificando tu enlace personal...</div>}
+ {!me&&!accessLoading?<>
  {!privateSetup&&<div className="stats"><div><span className="stat-icon"><Gift size={20}/></span><b>REGALOS SORPRESA</b><small>Un detalle que cuenta</small></div><div><span className="stat-icon"><ShieldCheck size={20}/></span><b>100% SECRETO</b><small>El misterio hasta el sorteo</small></div><div><span className="stat-icon"><Users size={20}/></span><b>PARA CUALQUIER GRUPO</b><small>Sin cuentas ni contraseñas</small></div></div>}
- <div className={privateSetup?"setup-private-layout":"two-columns"}>{!privateSetup&&<div className="panel"><div className="panel-heading"><span className="step">01 / INSCRIPCIÓN</span><h2>Entra al intercambio</h2><p>Escribe tu nombre y el código de invitación que recibiste por WhatsApp.</p></div>{invitePreview&&<div className="invite-preview" role="status"><span className="step">ESTÁS INVITADO A</span><h3>{invitePreview.title}</h3><p><CalendarDays size={16}/> Entrega: {date(invitePreview.event_date)} · Presupuesto: {money(invitePreview.budget)}</p></div>}{previewState==='loading'&&<p className="preview-note" role="status">Buscando tu intercambio...</p>}{previewState==='missing'&&<p className="preview-warning" role="status">No encontramos un intercambio para ese código. Revisa el enlace.</p>}{previewState==='error'&&<p className="preview-warning" role="status">No fue posible consultar los datos de la invitación. Intenta de nuevo.</p>}<label>Tu nombre<input value={joinName} onChange={e=>setJoinName(e.target.value)} maxLength={75} placeholder="Ej. Charly"/></label><label>Código del intercambio<input value={joinCode} onChange={e=>setJoinCode(e.target.value)} placeholder="Pega tu código de invitación"/></label><button className="primary" disabled={busy||!configured} onClick={register}>{busy?<Loader2 className="spin" size={17}/>:<>Unirme al intercambio <ArrowRight size={18}/></>}</button></div>}
+ <div className={privateSetup?"setup-private-layout":"two-columns"}>{!privateSetup&&<div className="panel"><div className="panel-heading"><span className="step">01 / INSCRIPCIÓN</span><h2>Entra al intercambio</h2><p>Escribe tu nombre y el código de invitación que recibiste por WhatsApp.</p></div>{invitePreview&&<div className="invite-preview" role="status"><span className="step">ESTÁS INVITADO A</span><h3>{invitePreview.title}</h3><p><CalendarDays size={16}/> Entrega: {date(invitePreview.event_date)} · Presupuesto: {money(invitePreview.budget)}</p></div>}{previewState==='loading'&&<p className="preview-note" role="status">Buscando tu intercambio...</p>}{previewState==='missing'&&<p className="preview-warning" role="status">No encontramos un intercambio para ese código. Revisa el enlace.</p>}{previewState==='error'&&<p className="preview-warning" role="status">No fue posible consultar los datos de la invitación. Intenta de nuevo.</p>}<label>Tu nombre<input value={joinName} onChange={e=>setJoinName(e.target.value)} maxLength={75} placeholder="Ej. Charly"/></label><label>Código del intercambio<input value={joinCode} onChange={e=>setJoinCode(e.target.value)} placeholder="Pega tu código de invitación"/></label><button className="primary" disabled={busy||!configured} onClick={register}>{busy?<Loader2 className="spin" size={17}/>:<>Unirme al intercambio <ArrowRight size={18}/></>}</button><div className="returning-member"><KeyRound size={17}/><div><b>¿Ya estás registrado?</b><p>No vuelvas a inscribirte. Abre tu enlace personal guardado desde el dispositivo anterior para entrar con tus mismos deseos y tu asignación.</p></div></div></div>}
  {privateSetup&&<div className="panel dark-panel"><span className="step">ACCESO ADMINISTRATIVO</span><h2>Crear intercambio</h2><p>Esta sección no aparece en la página pública. La creación requiere la clave de instalación validada por Supabase.</p>{setupFields}</div>}</div>
  </>:<>
  <div className="welcome"><div><span className="step">¡YA ESTÁS DENTRO!</span><h2>¡Hola, {me.name}!</h2><p>Estás participando en <strong>{info.exchange.title}</strong>. Prepara tus deseos: el secreto está por comenzar.</p></div><div className="bib">#{String(me.number).padStart(3,'0')}</div></div>
  <div className="exchange-summary"><div><span>PRESUPUESTO</span><b>{money(info.exchange.budget)}</b></div><div><span>ENTREGA</span><b>{date(info.exchange.event_date)}</b></div><div><span>EN EL INTERCAMBIO</span><b>{info.participants.filter(p=>p.participates).length} personas</b></div><div><span>ESTADO</span><b>{info.exchange.drawn?'Sorteo realizado':'Inscripciones abiertas'}</b></div></div>
+ <div className="panel personal-access-panel"><div className="personal-access-title"><KeyRound size={22}/><div><b>Mi acceso personal</b><p className="fine">Abre este mismo participante desde tu celular o computadora, sin registrarte otra vez.</p></div></div><div className="personal-access-actions"><button className="secondary" onClick={()=>copy(personalUrl)} disabled={!personalUrl}><Copy size={16}/> Copiar mi enlace</button><button className="outline" onClick={sharePersonal} disabled={!personalUrl}><Share2 size={16}/> Compartir conmigo</button></div><p className="personal-access-warning"><LockKeyhole size={15}/> <span><b>Es privado:</b> quien tenga este enlace podrá entrar a tu cuenta, ver tu asignación y modificar tus datos permitidos. No lo envíes al grupo ni lo publiques.</span></p></div>
  {me.is_admin&&<div className="panel admin-exchange-switcher"><div><b>Mis intercambios en este dispositivo</b><p className="fine">Puedes cambiar de intercambio sin perder el acceso a los anteriores. Estos accesos se guardan solo en este navegador; cerrar sesión los elimina.</p></div><div className="admin-switch-actions"><select aria-label="Seleccionar intercambio" value={info.exchange.id} onChange={e=>{const chosen=savedAdmins.find(x=>x.exchangeId===e.target.value);if(chosen)switchExchange(chosen.token)}}>{!savedAdmins.some(x=>x.exchangeId===info.exchange.id)&&<option value={info.exchange.id}>{info.exchange.title}</option>}{savedAdmins.map(x=><option value={x.exchangeId} key={x.exchangeId}>{x.title}</option>)}</select><button className="secondary" onClick={()=>{setCreateAnother(v=>!v);setSetupKey('')}}><Plus size={16}/> {createAnother?'Cancelar':'Crear otro intercambio'}</button></div></div>}
  {me.is_admin&&createAnother&&<div className="panel dark-panel admin-new-exchange"><span className="step">ACCESO ADMINISTRATIVO</span><h2>Crear otro intercambio</h2><p>Se creará un grupo independiente. Necesitas la clave de instalación de Supabase.</p>{setupFields}</div>}
  <nav className="tabs"><button className={page==='admin'?'active':''} style={{display:me.is_admin?'flex':'none'}} onClick={()=>setPage('admin')}><Settings size={17}/> Organizador</button><button className={page==='wall'?'active':''} onClick={()=>setPage('wall')}><Users size={17}/> El Muro</button><button style={{display:me.participates?'flex':'none'}} className={page==='wishlist'?'active':''} onClick={()=>setPage('wishlist')}><Heart size={17}/> Mi lista de deseos</button><button style={{display:me.participates?'flex':'none'}} className={page==='delivery'?'active':''} onClick={()=>setPage('delivery')}><MapPin size={17}/> Mi dirección {deliveryAlert&&<span className="delivery-dot" title="Tu amigo secreto necesita tu dirección">1</span>}</button><button style={{display:me.participates?'flex':'none'}} className={page==='assignment'?'active':''} onClick={()=>setPage('assignment')}><Gift size={17}/> ¿A quién me tocó?</button></nav>

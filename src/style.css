@@ -61,3 +61,16 @@
 .admin-switch-actions select{max-width:310px;min-width:180px}
 .admin-new-exchange{margin:1rem 0 1.5rem}
 @media(max-width:650px){.admin-switch-actions,.admin-switch-actions select,.admin-switch-actions button{width:100%;max-width:none}}
+
+/* v1.0 — personal cross-device access */
+.personal-access-panel{margin:16px 0;padding:20px;border:1px solid #d7dce5;border-radius:14px}
+.personal-access-title{display:flex;align-items:flex-start;gap:12px;color:#2D4569}
+.personal-access-title p{margin:5px 0 0;color:#526174}
+.personal-access-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.personal-access-actions button{display:inline-flex;align-items:center;gap:8px}
+.personal-access-warning{display:flex;align-items:flex-start;gap:8px;font-size:.85rem;line-height:1.45;color:#6b4350;margin:0}
+.personal-access-warning svg{flex-shrink:0;margin-top:2px}
+.returning-member{display:flex;align-items:flex-start;gap:10px;background:#f2f5f9;padding:14px;border-radius:10px;margin-top:16px;color:#2D4569}
+.returning-member svg{flex-shrink:0}
+.returning-member p{font-size:.88rem;margin:5px 0 0;color:#526174;line-height:1.5}
+@media(max-width:540px){.personal-access-actions button{flex:1;justify-content:center}}

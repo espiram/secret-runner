@@ -47,3 +47,10 @@
 - Previsualización de imágenes y títulos desde enlaces compatibles.
 - Edición de deseos propios y cierre configurable (con reapertura) para el organizador.
 - Migración `004_wall.sql` sin cambios a los emparejamientos existentes.
+
+## v1.0 — Enlaces de acceso personal
+- Panel para copiar/compartir un enlace privado de participante.
+- Recuperación de la misma sesión al abrir el enlace en otro dispositivo sin nuevo registro.
+- Validación previa de la credencial y borrado inmediato del fragmento de URL.
+- Aviso contra registros duplicados y advertencias de privacidad.
+- No requiere cambios de base de datos o API.
