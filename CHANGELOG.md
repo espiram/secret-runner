@@ -29,3 +29,9 @@
 - Admin-only deletion of non-admin participants, with exact-name confirmation.
 - Transactional cleanup of exclusions and wishes; disabled after draw.
 - New migration 003_safe_draw_testing.sql.
+
+## v0.7 — El Muro
+- Vistas privadas de actividad, catálogo de deseos y participantes.
+- Previsualización de imágenes y títulos desde enlaces compatibles.
+- Edición de deseos propios y cierre configurable (con reapertura) para el organizador.
+- Migración `004_wall.sql` sin cambios a los emparejamientos existentes.

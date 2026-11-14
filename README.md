@@ -1,45 +1,42 @@
-# A Mí Me Tocó... — v0.6
+# A Mí Me Tocó... — v0.7 «El Muro»
 
-**Tú pon los regalos, nosotros el secreto.**
+Aplicación de intercambio de regalos con React/Vite, GitHub Pages y Supabase. Esta versión añade **Actividad, Deseos y Participantes** para miembros autenticados del intercambio; no revela a quién le tocó regalar a quién.
 
-Plataforma de intercambios de regalos para grupos de amigos, familia y compañeros. Mantiene GitHub Pages, Supabase y el código del sorteo de la v0.4.
+## Actualizar desde v0.6 — orden obligatorio
 
-## Instalar sobre tu repositorio existente
+**1. Respaldo.** En Supabase crea un respaldo/exportación de las tablas `exchanges`, `participants`, `wishes`, `exclusions`, `assignments` antes de aplicar SQL. Conserva una copia de tu proyecto local.
 
-1. Descarga y descomprime el ZIP. Abre la carpeta `secret-runner`.
-2. Copia su contenido a la raíz del repositorio local, **sin borrar `.git`**.
-3. En GitHub Desktop, comprueba los cambios, haz commit con `feat: rebrand a mi me toco v0.5` y pulsa Push origin.
-4. En GitHub Actions comprueba que `build` y `deploy` terminen en verde. Recarga la URL actual de GitHub Pages.
+**2. Migración.** Supabase → SQL Editor → ejecuta solo `supabase/migrations/004_wall.sql` en el proyecto existente. **No vuelvas a ejecutar `001`, `002`, `003`.** Este script añade `wish_deadline`, `exchange_timezone`, `image_url` y `wall_events`, crea disparadores de actividad y migra el historial de participantes/deseos. A los intercambios existentes se les asigna inicialmente la fecha del evento como límite de edición; los que no tienen fecha permanecen abiertos. Las asignaciones del sorteo no se modifican.
 
-**Si ya instalaste v0.4:** no ejecutes SQL ni vuelvas a desplegar la Edge Function; solo cambia los archivos web. Las tablas y datos actuales permanecen intactos.
+**3. Edge Function.** Supabase → Edge Functions → `api` → reemplaza el contenido de `index.ts` con `supabase/functions/api/index.ts` y despliega. Mantén tus secretos existentes y la configuración `verify_jwt = false` utilizada por esta arquitectura. No copies secretos a GitHub ni al frontend.
 
-**Si sigues en v0.3:** ejecuta primero `supabase/migrations/003_safe_draw_testing.sql` y despliega la versión incluida de `supabase/functions/api/index.ts` para activar la simulación y limpieza segura. Conserva los secretos y `verify_jwt=false`. Después haz el commit del frontend.
+**4. Web.** Copia los archivos del ZIP sobre la raíz del repositorio `secret-runner` **sin borrar `.git`**. Commit: `feat: wall wish catalog and deadlines v0.7`, luego Push origin. Confirma que GitHub Actions finaliza `build` y `deploy` correctamente antes de usar el sitio.
 
-**No cambies todavía** el nombre del repositorio `secret-runner`, la URL de Pages ni la clave de sesión `secret_runner_token`. Eso evita romper enlaces de invitación y sesiones de los participantes existentes. Los títulos de intercambios creados no se renombran automáticamente.
+**5. Validación.** Abre la aplicación con tu sesión actual. Debe aparecer la pestaña «El Muro», con Actividad, Deseos y Participantes. Revisa que tus participantes antiguos aparecen. Añade un deseo de prueba; debe aparecer en el muro. Verifica que el organizador puede modificar la fecha límite y que la lista se vuelve de solo lectura cuando vence. Realiza pruebas con usuarios ficticios, sin publicar el sorteo definitivo.
 
-## Pruebas rápidas
+## Funcionalidad
 
-1. Verifica que la portada y el título de la pestaña digan A Mí Me Tocó...
-2. Confirma que el organizador puede entrar con su sesión anterior y editar su nombre.
-3. Revisa el enlace de invitación, las listas de deseos y el conteo de participantes.
-4. En v0.4 o superior, utiliza **Simular sorteo sin guardar**; no pulses **Realizar sorteo secreto** durante las pruebas.
+- Muro privado disponible desde el registro, incluso antes del sorteo.
+- Actividad automática: nuevos participantes, nuevos deseos y deseos actualizados. Eventos paginados de 10 en 10; el frontend agrupa adiciones recientes de la misma persona.
+- Catálogo de deseos: búsqueda por producto/participante, filtro por participante, tarjeta con fotografía opcional y enlace externo.
+- Directorio: todas las personas, también quienes figuran «Sin deseos».
+- Cada persona puede agregar, **editar** o eliminar solo sus deseos mientras la fecha límite siga abierta. El organizador puede extenderla o reabrirla hasta el día del intercambio. La fecha se interpreta en `America/Mexico_City` por defecto.
+- Extracción limitada de `og:image`/`og:title` al pegar un enlace HTTPS en tiendas compatibles. Si falla, se guarda el deseo sin imagen. No hace falta cuenta de compras; los enlaces se abren en la tienda original.
+- No hay comentarios, reacciones, compras ni favoritos, y ninguna respuesta del muro contiene asignaciones.
 
-## Tecnologías
+## Limitaciones que conviene conocer
 
-React + Vite + GitHub Pages; Supabase PostgreSQL + Edge Functions. Variables de compilación: `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. El secreto `ADMIN_SETUP_SECRET` permanece solo en Supabase.
+- Extracción automática de imágenes: **mejor esfuerzo, no garantizada**. Por seguridad, solo intenta acceder a los dominios de tiendas incluidos en `safeProductHost` en la Edge Function; algunas tiendas bloquean automatizaciones. La imagen puede caducar o impedir su visualización. No se almacena físicamente en Supabase Storage: se guarda la URL externa. El título del deseo sigue siendo editable.
+- Si el evento ya pasó, la migración deja su lista cerrada; el organizador no puede extenderla después del día del evento. Para probar el muro con datos históricos, hazlo en un entorno de pruebas con fecha futura.
+- El catálogo recupera hasta 1,000 deseos del intercambio por solicitud. Si piensas permitir grupos mucho más grandes, añade paginación de catálogo del lado del servidor.
+- El cierre de edición se valida en la Edge Function al ejecutar una operación. La versión actual usa `service_role` solo en la función y no concede acceso directo a las tablas desde el navegador.
+- El organizador que no participa puede ver El Muro, pero no crear deseos para sí mismo.
+- Crear múltiples intercambios públicos y recuperar tokens perdidos **no** están incluidos en esta versión.
 
-## Limitaciones
+## Configuración existente
 
-La versión actual trabaja con un intercambio por proyecto Supabase. El sorteo definitivo no se puede revertir desde la interfaz; los tokens de los participantes viven en el almacenamiento local del navegador. No hay recuperación automatizada de acceso.
+Mantén las variables GitHub `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, y en Supabase `ADMIN_SETUP_SECRET`, `ALLOWED_ORIGIN`. Conserva el nombre `secret-runner` y la clave local `secret_runner_token` si deseas mantener los enlaces y las sesiones actuales.
 
-## v0.6 — Nombre del intercambio visible en las invitaciones
+## Verificación / rollback
 
-Al abrir el enlace de invitación, antes de registrarse se muestra el nombre del intercambio, su fecha de entrega y presupuesto. Al entrar, aparece también en el saludo. Esta vista obtiene los datos mediante la acción `invite_preview` de la Edge Function, que **no** comparte listas de participantes, códigos ni asignaciones.
-
-### Actualizar una instalación v0.5
-
-1. **Supabase Edge Functions → api → Code:** reemplaza `index.ts` con `supabase/functions/api/index.ts` de este ZIP y despliega. Mantén los Secrets y JWT desactivado como ya estaban.
-2. **GitHub Desktop:** copia la carpeta del ZIP sobre tu repo (conservando `.git`), commit `feat: show exchange name on invitation` y Push origin.
-3. Comprueba que GitHub Actions desplegó. Abre un enlace de invitación en incógnito: el nombre aparecerá antes de inscribirse.
-
-**Sin SQL nuevo**. Ningún dato existente se modifica. El backend debe actualizarse antes del frontend para que la vista previa funcione.
+Si falla el `build`, GitHub Actions no debería publicar esa compilación. Si el backend fallara, restaura la Edge Function anterior y el frontend anterior. **No elimines columnas ni la tabla `wall_events` automáticamente en producción**: la migración contiene nuevas estructuras y no modifica asignaciones, y eliminarlas destruiría eventos recientes. Resuelve problemas con una migración correctiva si fuese necesario.
