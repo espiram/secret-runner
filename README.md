@@ -53,3 +53,8 @@ Mantén las variables GitHub `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, y en
 ## Verificación / rollback
 
 Si falla el `build`, GitHub Actions no debería publicar esa compilación. Si el backend fallara, restaura la Edge Function anterior y el frontend anterior. **No elimines columnas ni la tabla `wall_events` automáticamente en producción**: la migración contiene nuevas estructuras y no modifica asignaciones, y eliminarlas destruiría eventos recientes. Resuelve problemas con una migración correctiva si fuese necesario.
+
+
+## Actualización v1.1 — Nombres únicos
+
+Consulta `INSTALL_V1.1.md`. Requiere ejecutar la migración `006_unique_participant_names.sql` **antes** de desplegar la nueva API y frontend. Esta migración bloquea duplicados por intercambio sin distinguir mayúsculas, acentos ni espacios repetidos; mantiene todos los participantes y sus enlaces personales.

@@ -1,3 +1,11 @@
+# Cambios
+
+## v1.1
+- Detección de nombres repetidos en el registro, sin distinguir mayúsculas, acentos ni espacios repetidos.
+- Índice único por intercambio para impedir carreras de registro.
+- Mensaje para ingresar con el enlace personal existente.
+- Manejo de duplicados en el cambio de nombre del organizador.
+
 ## v0.8 — Direcciones privadas y solicitudes anónimas
 - Nueva sección «Mi dirección»; nombre de destinatario, tipo, dirección libre y referencias opcionales.
 - Visibilidad: propietario siempre y su dador asignado solo después del sorteo; sin privilegio adicional de organizador.

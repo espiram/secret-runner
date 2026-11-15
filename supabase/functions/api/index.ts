@@ -11,6 +11,7 @@ const hash=async(s:string)=>Array.from(new Uint8Array(await crypto.subtle.digest
 const required=(ok:boolean,message:string)=>{if(!ok)throw new Error(message)}
 const failDb=({error}:{error:unknown})=>{if(error)throw error}
 const clean=(value:unknown,len:number)=>String(value??'').trim().slice(0,len)
+const normalizedName=(name:string)=>name.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es').replace(/\s+/g,' ')
 const validUrl=(value:string)=>!value||(/^https?:\/\//i.test(value)&&value.length<=2000)
 const localDay=(timezone:string)=>{
  const parts=new Intl.DateTimeFormat('en-US',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date())
@@ -93,6 +94,14 @@ Deno.serve(async(req)=>{
      // No participant identities, invitation code or assignments are returned.
      return json({exchange:exchange?{title:exchange.title,budget:exchange.budget,event_date:exchange.event_date}:null},200,corsOrigin)
    }
+   if(action==='check_name'){
+     const code=clean(data.code,128),name=clean(data.name,75)
+     required(/^[0-9a-f]{64}$/i.test(code)&&name.length>0,'Introduce un nombre y una invitación válidos')
+     const {data:ex,error:exError}=await db.from('exchanges').select('id').eq('invite_code',code).maybeSingle();failDb({error:exError})
+     required(!!ex,'No encontramos ese intercambio')
+     const {data:people,error:pError}=await db.from('participants').select('name').eq('exchange_id',ex.id);failDb({error:pError})
+     return json({exists:people.some(p=>normalizedName(p.name)===normalizedName(name))},200,corsOrigin)
+   }
    if(action==='join'){
      const code=clean(data.code,128), name=clean(data.name,75)
      required(code.length>=32&&name.length>0,'Introduce un nombre y un código de invitación válidos')
@@ -100,7 +109,7 @@ Deno.serve(async(req)=>{
      required(!ex.drawn,'El sorteo ya se realizó')
      required(!ex.join_deadline||new Date(ex.join_deadline+'T23:59:59Z')>=new Date(),'La inscripción está cerrada')
      const session=randomToken();const {error:joinError}=await db.from('participants').insert({exchange_id:ex.id,name,token_hash:await hash(session)})
-     if(joinError){if(joinError.code==='23505')throw new Error('Este nombre ya está registrado. Usa un nombre diferente.');throw joinError}
+     if(joinError){if(joinError.code==='23505')throw new Error('Este nombre ya está registrado en el intercambio. Si eres tú, utiliza tu enlace personal; si no, escribe un nombre que te distinga.');throw joinError}
      return json({token:session},200,corsOrigin)
    }
    required(typeof token==='string'&&/^[0-9a-f]{64}$/.test(token),'Tu enlace de acceso ya no es válido')
@@ -169,7 +178,7 @@ Deno.serve(async(req)=>{
      const name=clean(data.name,75)
      required(name.length>0,'Escribe un nombre válido')
      const {error}=await db.from('participants').update({name}).eq('id',me.id).eq('exchange_id',exId)
-     if(error){if(error.code==='23505')throw new Error('Ya hay un corredor con ese nombre');throw error}
+     if(error){if(error.code==='23505')throw new Error('Este nombre ya está registrado en el intercambio');throw error}
      return json({ok:true},200,corsOrigin)
    }
    if(action==='set_organizer_participation'){
