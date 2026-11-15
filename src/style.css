@@ -80,3 +80,26 @@
 .join-name-feedback.taken, .join-name-feedback.error {color:#c4383e;}
 .join-name-feedback.available {color:#23734a;}
 .join-name-feedback.checking {color:#5d6b7b;}
+
+/* v1.2 — Gift tasks, anonymous messages and reception */
+.gift-tasks{max-width:850px;margin:0 auto 22px}
+.gift-tasks-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.gift-tasks-heading h2{margin:6px 0}.gift-tasks-heading p{margin:0 0 14px}
+.gift-tasks-heading strong{background:#2D4569;color:#fff;padding:9px 13px;border-radius:20px;white-space:nowrap}
+.gift-tasks-progress{height:9px;background:#e4e8ec;overflow:hidden;border-radius:20px;margin:10px 0 22px}
+.gift-tasks-progress>div{height:100%;background:#2D4569;transition:width .2s}
+.gift-task-card{border:1px solid #dbe0e8;padding:20px;margin:14px 0;border-radius:14px;text-align:left}
+.gift-task-card h3{display:flex;align-items:center;gap:9px;margin:0 0 9px;font-size:1.06rem}
+.gift-task-card p{line-height:1.55}.gift-task-card label{display:block;font-weight:600;margin:12px 0 6px}
+.gift-task-card textarea{width:100%;box-sizing:border-box;resize:vertical}
+.gift-task-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;margin:10px 0}
+.gift-task-row small{display:inline-flex;align-items:center;gap:5px}
+.gift-task-confirm{background:#f2f5f9;padding:15px;border-radius:10px;margin-top:12px}
+.gift-task-confirm .gift-task-row{justify-content:flex-start}
+.gift-task-ok,.gift-task-error,.gift-task-info{display:flex;align-items:center;gap:8px;line-height:1.5}
+.gift-task-ok{color:#23734a}.gift-task-error{color:#aa3030}.gift-task-info{color:#425774}
+.gift-message-revealed{background:#f2f5f9;padding:19px;border-radius:12px;margin-top:16px}
+.gift-message-revealed h3{color:#2D4569}.gift-message-revealed p{font-style:italic;white-space:pre-wrap;overflow-wrap:anywhere}
+.gift-message-revealed small{display:block;text-align:right}
+.gift-admin-progress{background:#f2f5f9;border-radius:12px;padding:16px;margin:18px 0;text-align:left}
+@media(max-width:600px){.gift-task-card{padding:14px}.gift-task-row button{flex:1}}

@@ -134,6 +134,45 @@ Deno.serve(async(req)=>{
      return json({wish_edit_open:deadlineOpen(ex),me:{id:me.id,name:me.name,is_admin:me.is_admin,participates:me.participates,number:participants.find(p=>p.id===me.id)?.number},exchange:outEx,participants,wishes:myWishes,assignment,exclusions},200,corsOrigin)
    }
    // Delivery addresses are deliberately excluded from dashboard, wall and organizer APIs.
+   // v1.2 — gift fulfillment is private and never sent through dashboard or wall.
+   if(action==='gift_status'){
+     required(ex.drawn,'El sorteo todavía no se ha realizado')
+     let adminSummary=null
+     if(me.is_admin){
+       const {data:assigned,error:aErr}=await db.from('assignments').select('giver').eq('exchange_id',exId);failDb({error:aErr})
+       const {data:participants,error:pErr}=await db.from('participants').select('id,name').eq('exchange_id',exId);failDb({error:pErr})
+       const {data:statuses,error:sErr}=await db.from('gift_fulfillment').select('giver_id,message,sent_at,received_at').eq('exchange_id',exId);failDb({error:sErr})
+       const byGiver=new Map((statuses||[]).map(s=>[s.giver_id,s]))
+       const pending=(assigned||[]).filter(a=>!byGiver.get(a.giver)?.message).map(a=>participants.find(p=>p.id===a.giver)?.name||'Participante')
+       adminSummary={total:assigned.length,messages_written:assigned.length-pending.length,sent:statuses.filter(s=>!!s.sent_at).length,received:statuses.filter(s=>!!s.received_at).length,pending_names:pending}
+     }
+     if(!me.participates)return json({admin:adminSummary},200,corsOrigin)
+     required(me.participates,'No participas en el sorteo')
+     const {data:outgoing,error:outErr}=await db.from('gift_fulfillment').select('message,sent_at,received_at').eq('exchange_id',exId).eq('giver_id',me.id).maybeSingle();failDb({error:outErr})
+     // This lookup identifies the incoming giver only inside the server, never in the response.
+     const {data:incomingAssignment,error:inErr}=await db.from('assignments').select('giver').eq('exchange_id',exId).eq('receiver',me.id).single();failDb({error:inErr})
+     const {data:incoming,error:giftErr}=await db.from('gift_fulfillment').select('message,sent_at,received_at').eq('exchange_id',exId).eq('giver_id',incomingAssignment.giver).maybeSingle();failDb({error:giftErr})
+     const received=!!incoming?.received_at
+     return json({admin:adminSummary,outgoing:{message:outgoing?.message||'',sent_at:outgoing?.sent_at||null,received_at:outgoing?.received_at||null},incoming:{sent_at:incoming?.sent_at||null,received_at:incoming?.received_at||null,message:received?(incoming?.message||null):null,message_pending:received&&!incoming?.message}},200,corsOrigin)
+   }
+   if(action==='gift_save_message'){
+     required(ex.drawn&&me.participates,'Necesitas participar en un sorteo realizado')
+     const message=String(data.message??'').trim()
+     required(message.length>=30&&message.length<=1000,'El mensaje debe tener entre 30 y 1000 caracteres')
+     failDb(await db.rpc('gift_save_message',{p_exchange:exId,p_giver:me.id,p_message:message}))
+     return json({ok:true},200,corsOrigin)
+   }
+   if(action==='gift_mark_sent'){
+     required(ex.drawn&&me.participates,'Necesitas participar en un sorteo realizado')
+     failDb(await db.rpc('gift_mark_sent',{p_exchange:exId,p_giver:me.id}))
+     return json({ok:true},200,corsOrigin)
+   }
+   if(action==='gift_confirm_received'){
+     required(ex.drawn&&me.participates,'Necesitas participar en un sorteo realizado')
+     // The recipient is always derived from the authenticated token.
+     failDb(await db.rpc('gift_confirm_received',{p_exchange:exId,p_receiver:me.id}))
+     return json({ok:true},200,corsOrigin)
+   }
    if(action==='delivery_status'){
      const {data:own,error:ownError}=await db.from('delivery_addresses').select('recipient_name,kind,address_text,notes,updated_at').eq('participant_id',me.id).eq('exchange_id',exId).maybeSingle();failDb({error:ownError})
      const {data:incoming,error:incomingError}=await db.from('delivery_requests').select('requested_at,fulfilled_at').eq('recipient_id',me.id).eq('exchange_id',exId).maybeSingle();failDb({error:incomingError})

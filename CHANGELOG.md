@@ -62,3 +62,10 @@
 - Validación previa de la credencial y borrado inmediato del fragmento de URL.
 - Aviso contra registros duplicados y advertencias de privacidad.
 - No requiere cambios de base de datos o API.
+
+## v1.2 — Mensajes secretos y seguimiento de regalos
+- Nueva pestaña **Mis tareas** con tres acciones: escribir mensaje, confirmar envío y confirmar recepción.
+- Mensajes obligatorios (30–1000 caracteres) y privados hasta recepción confirmada en dos pasos.
+- Mensaje pendiente si el destinatario confirma antes de que se escriba, con revelación posterior automática.
+- Seguimiento agregado para el organizador sin acceso al contenido ni a las parejas asignadas.
+- Migración no destructiva `007_gift_messages_and_status.sql` y nuevos endpoints protegidos en Edge Function.
