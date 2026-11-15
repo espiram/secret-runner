@@ -1,3 +1,7 @@
+## v1.2.1
+- Mejoras UX para acceso personal: botones visibles, copiar con confirmación y compartir nativo/fallback.
+- Solo frontend.
+
 # Cambios
 
 ## v1.1

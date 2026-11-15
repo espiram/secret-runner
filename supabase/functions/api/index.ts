@@ -92,7 +92,7 @@ Deno.serve(async(req)=>{
      const {data:exchange,error}=await db.from('exchanges').select('title,budget,event_date,join_deadline,drawn').eq('invite_code',code).maybeSingle()
      failDb({error})
      // No participant identities, invitation code or assignments are returned.
-     return json({exchange:exchange?{title:exchange.title,budget:exchange.budget,event_date:exchange.event_date}:null},200,corsOrigin)
+     return json({exchange:exchange?{title:exchange.title,budget:exchange.budget,event_date:exchange.event_date,join_deadline:exchange.join_deadline,registration_open:!exchange.drawn&&(!exchange.join_deadline||localDay('America/Mexico_City')<=exchange.join_deadline)}:null},200,corsOrigin)
    }
    if(action==='check_name'){
      const code=clean(data.code,128),name=clean(data.name,75)
@@ -107,7 +107,7 @@ Deno.serve(async(req)=>{
      required(code.length>=32&&name.length>0,'Introduce un nombre y un código de invitación válidos')
      const {data:ex,error}=await db.from('exchanges').select('*').eq('invite_code',code).single();failDb({error})
      required(!ex.drawn,'El sorteo ya se realizó')
-     required(!ex.join_deadline||new Date(ex.join_deadline+'T23:59:59Z')>=new Date(),'La inscripción está cerrada')
+     required(!ex.join_deadline||localDay(ex.exchange_timezone||'America/Mexico_City')<=ex.join_deadline,'La inscripción está cerrada')
      const session=randomToken();const {error:joinError}=await db.from('participants').insert({exchange_id:ex.id,name,token_hash:await hash(session)})
      if(joinError){if(joinError.code==='23505')throw new Error('Este nombre ya está registrado en el intercambio. Si eres tú, utiliza tu enlace personal; si no, escribe un nombre que te distinga.');throw joinError}
      return json({token:session},200,corsOrigin)
